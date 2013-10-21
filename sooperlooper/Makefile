@@ -49,3 +49,5 @@ install: $(OBJ)
 	mkdir -p $(INSTALL_PATH)/sooperlooper.lv2
 	cp $(PLUGIN) $(INSTALL_PATH)/sooperlooper.lv2/
 	cp src/*.ttl $(INSTALL_PATH)/sooperlooper.lv2/
+	test -f src/modgui && cp -r src/modgui/ $(INSTALL_PATH)/sooperlooper.lv2/ || true
+	
