@@ -1,0 +1,23 @@
+{
+    "author": "MOD", 
+    "color": "red", 
+    "controls": [
+        {
+            "name": "Play/Pause", 
+            "symbol": "play_pause"
+        },
+        {
+            "name": "Record", 
+            "symbol": "record"
+        },
+        {
+            "name": "Undo", 
+            "symbol": "undo"
+        },
+        {
+            "name": "Reset", 
+            "symbol": "reset"
+        }
+    ], 
+    "label": "SooperLooper"
+}
