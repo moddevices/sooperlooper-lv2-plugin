@@ -781,6 +781,14 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
   /* 
    * LV2 run, reading control ports and setting states 
    */
+
+    if (*(plugin->reset) > 0.0) {
+        clearLoopChunks(pLS);
+        plugin->recording = 0;
+        plugin->playing = 0;
+        plugin->started = 0;
+        *(plugin->reset) = 0.0;
+    }
     
     if (*(plugin->play_pause) > 0.0 && !plugin->playing) {
         plugin->playing = 1;
