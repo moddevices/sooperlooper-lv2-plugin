@@ -27,7 +27,7 @@
         margin-bottom: 109px;
     }
     .mod-sooperlooper .mod-control-group{
-        float: left;
+        float: left !important;
         margin: 110px -10px 0 26px !important;
         height: 257px;
         width: 95px;
