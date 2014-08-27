@@ -91,6 +91,6 @@ Basic looping plugin
         mod:stylesheet <modgui/sooperlooper.css>;
         mod:iconTemplate <modgui/sooperlooper.html>;
         mod:templateData <modgui/data-sooperlooper.json>;
-        mod:screenshot <modgui/SooperLooper.png>;
-        mod:thumbnail <modgui/SooperLooper-thumb.png>;
+        mod:screenshot <modgui/screenshot-sooperlooper.png>;
+        mod:thumbnail <modgui/thumb-sooperlooper.png>;
     ] .
