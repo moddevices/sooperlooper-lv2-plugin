@@ -15,6 +15,10 @@
             "symbol": "undo"
         },
         {
+            "name": "Redo", 
+            "symbol": "redo"
+        },
+        {
             "name": "Reset", 
             "symbol": "reset"
         }

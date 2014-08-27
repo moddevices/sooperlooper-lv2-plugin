@@ -88,6 +88,7 @@ Basic looping plugin
       mod:gui [
         a mod:Gui;
         mod:resourcesDirectory <modgui>;
+        mod:stylesheet <modgui/sooperlooper.css>;
         mod:iconTemplate <modgui/sooperlooper.html>;
         mod:templateData <modgui/data-sooperlooper.json>;
         mod:screenshot <modgui/SooperLooper.png>;

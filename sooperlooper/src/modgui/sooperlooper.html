@@ -1,92 +1,27 @@
-<style type="text/css" media="screen">
-.mod-sooperlooper {
-  background:url(/resources/bg-sooperlooper.png?bundle=sooperlooper.lv2&url=http://portalmod.com/plugins/sooperlooper) no-repeat center center;
-  height:330px;
-  position:relative;
-  width:800px;
-}
-.mod-sooperlooper .mod-plugin-author {
-  bottom:30px;
-  left:0;
-  position:absolute;
-  right:0;
-  text-align:center;
-}
-.mod-sooperlooper .mod-plugin-author h1 {
-  color:white;
-  font-size:21px;
-  text-shadow:0 0 1px black;
-}
-.mod-sooperlooper .mod-plugin-name {
-  left:0;
-  position:absolute;
-  right:0;
-  text-align:center;  
-  top:20px;
-}
-.mod-sooperlooper .mod-plugin-name h1 {
-  color:white;
-  font-size:18px;
-  text-shadow:0 0 1px black;
-}
-.mod-sooperlooper .mod-control-group {
-  border:3px solid white;
-  border-radius:9px;
-  bottom:90px;
-  box-shadow:0 0 1px black;
-  left:70px;
-  position:absolute;
-  right:70px;
-  top:80px;
-}
-.mod-sooperlooper .mod-control-group .mod-control {
-  float:left;
-  height:150px;
-  position:relative;
-  text-align:center;
-  width:25%;
-}
-.mod-sooperlooper .mod-control-group .mod-control .mod-control-title {
-  bottom:20px;
-  color:white;
-  font-size:11px;
-  left:0;
-  position:absolute;
-  right:0;
-  text-align:center;
-  text-shadow:0 0 1px black;
-  text-transform:uppercase;
-}
-.mod-sooperlooper .mod-control-group .mod-control .mod-control-image {
-  background-image:url(/resources/footswitch.png?bundle=sooperlooper.lv2&url=http://portalmod.com/plugins/sooperlooper);
-  background-position:center center;
-  background-repeat:no-repeat;
-  background-size:auto 72px;
-  height:72px;
-  left:0;
-  margin:0 auto;
-  position:absolute;
-  right:0;
-  top:30px;
-  width:72px;
-}
-</style>
-
-
 <div class="mod-pedal mod-sooperlooper">
     <div mod-role="drag-handle" class="mod-drag-handle"></div>
-    <div class="mod-plugin-author"><h1>{{author}}</h1></div>
-    <div class="mod-plugin-name"><h1>{{label}}</h1></div>
     <div class="mod-light on" mod-role="bypass-light"></div>
-    <div class="mod-footswitch" mod-role="bypass"></div>
-    <div class="mod-control-group clearfix">
-        {{#controls}}
+    <div class="mod-control-group left">
         <div class="mod-control">
-            <div class="mod-control-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div>
-            <span class="mod-control-title">{{name}}</span>
+            <div class="mod-control-image" id="rec" mod-role="input-control-port" mod-port-symbol="record" mod-widget="switch"></div>
         </div>
-        {{/controls}}
+        <div class="mod-control">
+            <div class="mod-control-image" id="play" mod-role="input-control-port" mod-port-symbol="play_pause" mod-widget="switch"></div>
+        </div>
     </div>
+    <div class="mod-control-group right">
+        <div class="mod-control">
+            <div class="mod-control-image" mod-role="input-control-port" mod-port-symbol="undo" mod-widget="switch"></div>
+        </div>
+        <div class="mod-control">
+            <div class="mod-control-image" mod-role="input-control-port" mod-port-symbol="redo" mod-widget="switch"></div>
+        </div>
+    </div>
+    <div class="mod-control">
+        <div class="mod-control-image" id="reset" mod-role="input-control-port" mod-port-symbol="reset" mod-widget="switch"></div>
+    </div>
+
+    <div class="mod-footswitch" mod-role="bypass"></div>
     <div class="mod-pedal-input">
         {{#effect.ports.audio.input}}
         <div class="mod-input mod-input-disconnected" title="{{name}}" mod-role="input-audio-port" mod-port-symbol="{{symbol}}">
