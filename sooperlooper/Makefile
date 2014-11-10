@@ -28,7 +28,7 @@ LDFLAGS += -shared -lc -lm -fPIC -DPIC -nostartfiles
 
 # libs
 # LIBS = -lm -lsamplerate
-LIBS = -llo -ljack
+# LIBS = -llo -ljack
 # remove command
 RM = rm -f
 	
