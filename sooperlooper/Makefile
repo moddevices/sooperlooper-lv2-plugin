@@ -23,8 +23,8 @@ CC = g++
 LD = g++
 
 # flags
-CFLAGS = -I. -O2 -Wall -fPIC -DPIC -c -DSAMPLE_MEMORY=$(SAMPLE_MEMORY) $(DEBUG) -fpermissive
-LDFLAGS = -shared -lc -lm -fPIC -DPIC -nostartfiles
+CFLAGS += -I. -O2 -Wall -fPIC -DPIC -c -DSAMPLE_MEMORY=$(SAMPLE_MEMORY) $(DEBUG) -fpermissive
+LDFLAGS += -shared -lc -lm -fPIC -DPIC -nostartfiles
 
 # libs
 # LIBS = -lm -lsamplerate
