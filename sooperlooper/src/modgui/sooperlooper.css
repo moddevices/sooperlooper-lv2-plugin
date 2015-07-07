@@ -60,7 +60,7 @@
         z-index: 2000000;
         position: absolute;
         bottom: 55px;
-        right: 67px;
+        right: 52px;
     }
     .mod-sooperlooper .mod-footswitch{
         background-image:url(/resources/switch-key.png{{{ns}}});
@@ -71,7 +71,7 @@
         height: 77px;
         width: 43px;
         bottom: 37px;
-        left: 67px !important;
+        left: 52px !important;
         position: absolute;
         z-index: 100;
     }
@@ -87,7 +87,7 @@ width: 32px;
 bottom: 61px;
 position: absolute;
 top: inherit;
-left: 129px;
+left: 114px;
   }
 .mod-sooperlooper .mod-light.off { 
   background-image:url(/resources/red-light-off.png{{{ns}}}); 
