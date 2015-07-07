@@ -1,47 +1,42 @@
-# Please edit this to work for you
 
 # This is how many seconds of loop memory you want your
 # plugin to have available.
 SAMPLE_MEMORY = 200
 
-# comment this out if you don't want to see my debugging output
-# It is actually useful to see when exactly it is changing states.
-# All output is out stderr
-DEBUG = -DDEBUG
-
 # plugin name
-DIR_NAME = $(shell basename `pwd`)
-PLUGIN = $(shell echo $(DIR_NAME) | tr A-Z a-z).so
+PLUGIN = $(shell basename $(shell pwd) | tr A-Z a-z)
+PLUGIN_SO = $(PLUGIN).so
 
 # installation path
 ifndef INSTALL_PATH
-	INSTALL_PATH = /usr/local/lib/lv2/
+INSTALL_PATH = /usr/local/lib/lv2/
 endif
+INSTALLATION_PATH = $(DESTDIR)$(INSTALL_PATH)/$(PLUGIN).lv2/
 
 # compiler and linker
 CXX ?= g++
 
 # flags
-CXXFLAGS += -I. -O2 -Wall -fPIC -DPIC -c -DSAMPLE_MEMORY=$(SAMPLE_MEMORY) $(DEBUG)
+CXXFLAGS += -I. -O2 -Wall -fPIC -DPIC -c -DSAMPLE_MEMORY=$(SAMPLE_MEMORY)
 LDFLAGS += -shared -lm -Wl,--no-undefined
 
 # remove command
 RM = rm -f
-	
+
 # sources and objects
 SRC = $(wildcard src/*.cpp)
 OBJ = $(SRC:.cpp=.o)
 
-$(PLUGIN): $(OBJ)
-	$(CXX) $(OBJ) $(LDFLAGS) -o $(PLUGIN)
+$(PLUGIN_SO): $(OBJ)
+	$(CXX) $(OBJ) $(LDFLAGS) -o $(PLUGIN_SO)
 
 %.o: %.cpp
 	$(CXX) $< $(CXXFLAGS) -o $@
 
 clean:
-	$(RM) src/*.o $(PLUGIN)
+	$(RM) src/*.o $(PLUGIN_SO)
 
-install: $(PLUGIN)
-	mkdir -p $(INSTALL_PATH)/sooperlooper.lv2
-	cp $(PLUGIN) $(INSTALL_PATH)/sooperlooper.lv2/
-	cp -r src/*.ttl src/modgui $(INSTALL_PATH)/sooperlooper.lv2/
+install: $(PLUGIN_SO)
+	mkdir -p $(INSTALLATION_PATH)
+	cp $(PLUGIN_SO) $(INSTALLATION_PATH)
+	cp -r src/*.ttl src/modgui $(INSTALLATION_PATH)
