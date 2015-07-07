@@ -19,16 +19,12 @@ ifndef INSTALL_PATH
 endif
 
 # compiler and linker
-CC = g++
-LD = g++
+CXX ?= g++
 
 # flags
-CFLAGS = -I. -O2 -Wall -fPIC -DPIC -c -DSAMPLE_MEMORY=$(SAMPLE_MEMORY) $(DEBUG) -fpermissive
-LDFLAGS = -shared -lc -lm -fPIC -DPIC -nostartfiles
+CXXFLAGS += -I. -O2 -Wall -fPIC -DPIC -c -DSAMPLE_MEMORY=$(SAMPLE_MEMORY) $(DEBUG)
+LDFLAGS += -shared -lm -Wl,--no-undefined
 
-# libs
-# LIBS = -lm -lsamplerate
-LIBS = -llo -ljack
 # remove command
 RM = rm -f
 	
@@ -37,16 +33,15 @@ SRC = $(wildcard src/*.cpp)
 OBJ = $(SRC:.cpp=.o)
 
 $(PLUGIN): $(OBJ)
-	$(LD) $(LDFLAGS) $(OBJ) -o $(PLUGIN) $(LIBS)
+	$(CXX) $(OBJ) $(LDFLAGS) -o $(PLUGIN)
 
 %.o: %.cpp
-	$(CC) $(CFLAGS) -o $@ $<
+	$(CXX) $< $(CXXFLAGS) -o $@
 
 clean:
 	$(RM) src/*.o $(PLUGIN)
 
-install: $(OBJ) 
+install: $(PLUGIN)
 	mkdir -p $(INSTALL_PATH)/sooperlooper.lv2
 	cp $(PLUGIN) $(INSTALL_PATH)/sooperlooper.lv2/
-	cp src/*.ttl $(INSTALL_PATH)/sooperlooper.lv2/
-	test -d src/modgui && cp -r src/modgui/ $(INSTALL_PATH)/sooperlooper.lv2/ || true
+	cp -r src/*.ttl src/modgui $(INSTALL_PATH)/sooperlooper.lv2/

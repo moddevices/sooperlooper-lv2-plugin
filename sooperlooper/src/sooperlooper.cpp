@@ -47,7 +47,7 @@ enum {IN_0, OUT_0, PLAY_PAUSE, RECORD, RESET, UNDO, REDO, PLUGIN_PORT_COUNT};
 
 /*****************************************************************************/
 
-#include "ladspa.h"
+typedef float LADSPA_Data;
 
 /*****************************************************************************/
 
