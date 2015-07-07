@@ -18,5 +18,5 @@ Currently it supports:
 Next features planned include:
 
  * stereo in/out
- * tempo/bpm sync 
+ * tempo/bpm sync
  * pitch change

@@ -81,17 +81,17 @@
     .mod-sooperlooper .mod-control-image.on {
         background-position-y: bottom !important
     }
-.mod-sooperlooper .mod-light {
-height: 32px;
-width: 32px;
-bottom: 61px;
-position: absolute;
-top: inherit;
-left: 114px;
-  }
-.mod-sooperlooper .mod-light.off { 
-  background-image:url(/resources/red-light-off.png{{{ns}}}); 
-}
-.mod-sooperlooper .mod-light.on  { 
-  background-image:url(/resources/red-light-on.png{{{ns}}}); 
-}
+    .mod-sooperlooper .mod-light {
+        height: 32px;
+        width: 32px;
+        bottom: 61px;
+        position: absolute;
+        top: inherit;
+        left: 114px;
+    }
+    .mod-sooperlooper .mod-light.off {
+        background-image:url(/resources/red-light-off.png{{{ns}}});
+    }
+    .mod-sooperlooper .mod-light.on {
+        background-image:url(/resources/red-light-on.png{{{ns}}});
+    }

@@ -36,7 +36,7 @@
 #include <lv2.h>
 #include <string.h>
 
-#define PLUGIN_URI "http://portalmod.com/plugins/sooperlooper"
+#define PLUGIN_URI "http://moddevices.com/plugins/sooperlooper"
 
 /**********************************************************************************************************************************************************/
 
