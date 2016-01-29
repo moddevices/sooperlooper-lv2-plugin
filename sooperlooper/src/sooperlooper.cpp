@@ -849,7 +849,6 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
         plugin->recording = 0;
         plugin->playing = 0;
         plugin->started = 0;
-        *(plugin->reset) = 0.0;
     }
 
     if (*(plugin->undo) > 0.0) {
@@ -857,7 +856,6 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
             undoLoop(pLS); 
             pLS->state = STATE_PLAY;
         }
-        *(plugin->undo) = 0.0;
     }
 
     if (*(plugin->redo) > 0.0) {
@@ -865,7 +863,6 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
             redoLoop(pLS); 
             pLS->state = STATE_PLAY;
         }
-        *(plugin->redo) = 0.0;
     }
     /* end control reading */
 
