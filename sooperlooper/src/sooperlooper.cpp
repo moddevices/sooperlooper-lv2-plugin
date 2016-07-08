@@ -342,7 +342,7 @@ static LoopChunk * pushNewLoopChunk(SooperLooper* pLS, unsigned long initLength)
 }
 
 // pop the head off and free it
-static void popHeadLoop(SooperLooper *pLS)
+static int popHeadLoop(SooperLooper *pLS)
 {
    LoopChunk *dead;
    dead = pLS->headLoopChunk;
@@ -358,9 +358,12 @@ static void popHeadLoop(SooperLooper *pLS)
    }
    else {
       pLS->headLoopChunk = NULL;
+      return 1;
       // pLS->tailLoopChunk is still valid to support redo
       // from nothing
    }
+
+   return 0;
 }
 
 // clear all LoopChunks (undoAll , can still redo them back)
@@ -382,7 +385,7 @@ static void clearLoopChunks(SooperLooper *pLS)
    pLS->headLoopChunk = NULL;
 }
 
-void undoLoop(SooperLooper *pLS)
+int undoLoop(SooperLooper *pLS)
 {
    LoopChunk *loop = pLS->headLoopChunk;
    LoopChunk *prevloop;
@@ -394,7 +397,7 @@ void undoLoop(SooperLooper *pLS)
       prevloop->dCurrPos = fmod(loop->dCurrPos+loop->lStartAdj, prevloop->lLoopLength);
    }
    
-   popHeadLoop(pLS);
+   return popHeadLoop(pLS);
    //DBG(fprintf(stderr, "Undoing last loop %08x: new head is %08x\n", (unsigned)loop,
 	       //(unsigned)pLS->headLoopChunk);)
 }
@@ -845,7 +848,10 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
 
     if (*(plugin->undo) > 0.0) {
         if(loop) { 
-            undoLoop(pLS); 
+            int empty = undoLoop(pLS);
+            if (empty) {
+              plugin->started = 0;
+            }
             pLS->state = STATE_PLAY;
         }
     }
