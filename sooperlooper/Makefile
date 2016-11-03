@@ -17,7 +17,7 @@ INSTALLATION_PATH = $(DESTDIR)$(INSTALL_PATH)/$(PLUGIN).lv2/
 CXX ?= g++
 
 # flags
-CXXFLAGS += -I. -O2 -Wall -fPIC -DPIC -c -DSAMPLE_MEMORY=$(SAMPLE_MEMORY)
+CXXFLAGS += -I. -O3 -Wall -fPIC -DPIC -c -DSAMPLE_MEMORY=$(SAMPLE_MEMORY)
 LDFLAGS += -shared -lm -Wl,--no-undefined
 
 # remove command
