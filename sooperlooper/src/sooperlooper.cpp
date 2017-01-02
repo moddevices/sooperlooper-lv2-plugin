@@ -176,6 +176,7 @@ typedef struct {
     unsigned long lOverTrigSamples;    
 
     unsigned long lRampSamples;
+    int bRampDown;
     
     LADSPA_Data fCurrRate;
     LADSPA_Data fNextCurrRate;
@@ -1388,11 +1389,23 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
 		 lCurrPos =(unsigned int) fmod(loop->dCurrPos, loop->lLoopLength);
 		 //fprintf(stderr, "curr = %u\n", lCurrPos);
 
-
+		 //ramp up on the beginning of the samples
+		 if (lCurrPos == 0) {
+		     pLS->lRampSamples = XFADE_SAMPLES;
+		     pLS->bRampDown = -1;
+		 }
+                 
+         	 //ramp down in the end
+		 if (pLS->lRampSamples <= 0 &&
+		     loop->lLoopLength > XFADE_SAMPLES && 
+		     lCurrPos > loop->lLoopLength - XFADE_SAMPLES) {
+		     pLS->lRampSamples = XFADE_SAMPLES;
+		     pLS->bRampDown = 1;
+		 }
 
 		 // modify fWet if we are in a ramp up/down
 		 if (pLS->lRampSamples > 0) {
-		    if (pLS->state == STATE_MUTE) {
+		    if (pLS->state == STATE_MUTE || pLS->bRampDown == 1) {
 		       //negative linear ramp
 		       tmpWet = fWet * (pLS->lRampSamples * 1.0) / XFADE_SAMPLES;
 		    }
@@ -1695,6 +1708,7 @@ void SooperLooperPlugin::activate(LV2_Handle instance)
   pLS->lScratchSamples = 0;
   pLS->lTapTrigSamples = 0;
   pLS->lRampSamples = 0;
+  pLS->bRampDown = 0;
   pLS->bPreTap = 1; // first tap init
   pLS->fLastScratchVal = 0.0;
   pLS->fLastTapCtrl = -1;
