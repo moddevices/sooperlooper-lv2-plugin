@@ -40,15 +40,29 @@ lv2:port [
   lv2:shortName "Input";
 ],
 [
-  a lv2:AudioPort, lv2:OutputPort;
+  a lv2:AudioPort, lv2:InputPort;
   lv2:index 1;
+  lv2:symbol "input";
+  lv2:name "Input";
+  lv2:shortName "Input";
+],
+[
+  a lv2:AudioPort, lv2:OutputPort;
+  lv2:index 2;
+  lv2:symbol "output";
+  lv2:name "Output";
+  lv2:shortName "Output";
+],
+[
+  a lv2:AudioPort, lv2:OutputPort;
+  lv2:index 3;
   lv2:symbol "output";
   lv2:name "Output";
   lv2:shortName "Output";
 ],
 [
   a lv2:ControlPort, lv2:InputPort;
-  lv2:index 2;
+  lv2:index 4;
   lv2:symbol "play_pause";
   lv2:name "Play/Pause";
   lv2:shortName "Play/Pause";
@@ -59,7 +73,7 @@ lv2:port [
 ],
 [
   a lv2:ControlPort, lv2:InputPort;
-  lv2:index 3;
+  lv2:index 5;
   lv2:symbol "record";
   lv2:name "Record";
   lv2:shortName "Record";
@@ -70,7 +84,7 @@ lv2:port [
 ],
 [
   a lv2:ControlPort, lv2:InputPort;
-  lv2:index 4;
+  lv2:index 6;
   lv2:symbol "reset";
   lv2:name "Reset";
   lv2:shortName "Reset";
@@ -81,7 +95,7 @@ lv2:port [
 ],
 [
   a lv2:ControlPort, lv2:InputPort;
-  lv2:index 5;
+  lv2:index 7;
   lv2:symbol "undo";
   lv2:name "Undo";
   lv2:shortName "Undo";
@@ -92,7 +106,7 @@ lv2:port [
 ],
 [
   a lv2:ControlPort, lv2:InputPort;
-  lv2:index 6;
+  lv2:index 8;
   lv2:symbol "redo";
   lv2:name "Redo";
   lv2:shortName "Redo";
