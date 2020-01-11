@@ -42,6 +42,7 @@
 
 enum {IN_0, IN_1, OUT_0, OUT_1, PLAY_PAUSE, RECORD, RESET, UNDO, REDO, PLUGIN_PORT_COUNT};
 
+#define NUM_CHANNELS 2
 #define PLUGIN_AUDIO_PORT_COUNT     4
 #define PLUGIN_CONTROL_PORT_COUNT   PLUGIN_PORT_COUNT - PLUGIN_AUDIO_PORT_COUNT
 
@@ -677,8 +678,19 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
     plugin = (SooperLooperPlugin *) instance;
 
     // LADSPA_Data * pfBuffer;
+    //float **inputs[1024];
+    //float **outputs[1024];
+
+    float temp_buffer[1024];
+    //inputs[0] = &plugin->in_0;
+    //inputs[1] = &plugin->in_1;
+    //outputs[0] = &plugin->in_0;
+    //outputs[1] = &plugin->in_1;
+
     LADSPA_Data * pfInput;
+    LADSPA_Data * pfInput_1;
     LADSPA_Data * pfOutput;
+    LADSPA_Data * pfOutput_1;
     LADSPA_Data fDry=1.0, fWet=1.0, tmpWet;
     LADSPA_Data fInputSample;
     LADSPA_Data fOutputSample;
@@ -713,7 +725,10 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
     }
 
     pfInput = plugin->in_0;
+    pfInput_1 = plugin->in_1;
+
     pfOutput = plugin->out_0;
+    pfOutput_1 = plugin->out_1;
     // pfBuffer = (LADSPA_Data *)pLS->pSampleBuf;
 
     // we set up default bindings in case the host hasn't
@@ -882,40 +897,42 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
                     for (;lSampleIndex < SampleCount;
                             lSampleIndex++)
                     {
-                        fInputSample = pfInput[lSampleIndex];
-                        if (fInputSample > fTrigThresh
-                                || fTrigThresh==0.0)
-                        {
+                        for (unsigned c = 0; c < NUM_CHANNELS; c++) {
+                            fInputSample = pfInput[lSampleIndex];
+                            if (fInputSample > fTrigThresh
+                                    || fTrigThresh==0.0)
+                            {
 
-                            loop = pushNewLoopChunk(pLS, 0);
-                            if (loop) {
-                                pLS->state = STATE_RECORD;
-                                // force rate to be 1.0
-                                fRate = pLS->fCurrRate = 1.0;
+                                loop = pushNewLoopChunk(pLS, 0);
+                                if (loop) {
+                                    pLS->state = STATE_RECORD;
+                                    // force rate to be 1.0
+                                    fRate = pLS->fCurrRate = 1.0;
 
-                                loop->pLoopStop = loop->pLoopStart;
-                                loop->lLoopLength = 0;
-                                loop->lStartAdj = 0;
-                                loop->lEndAdj = 0;
-                                loop->dCurrPos = 0.0;
-                                loop->firsttime = 0;
-                                loop->lMarkL = loop->lMarkEndL = MAXLONG;
-                                loop->frontfill = loop->backfill = 0;
-                                loop->lCycles = 1; // at first just one
-                                loop->srcloop = NULL;
-                                pLS->nextState = -1;
-                                loop->dOrigFeedback = fFeedback;
-                                break;
+                                    loop->pLoopStop = loop->pLoopStart;
+                                    loop->lLoopLength = 0;
+                                    loop->lStartAdj = 0;
+                                    loop->lEndAdj = 0;
+                                    loop->dCurrPos = 0.0;
+                                    loop->firsttime = 0;
+                                    loop->lMarkL = loop->lMarkEndL = MAXLONG;
+                                    loop->frontfill = loop->backfill = 0;
+                                    loop->lCycles = 1; // at first just one
+                                    loop->srcloop = NULL;
+                                    pLS->nextState = -1;
+                                    loop->dOrigFeedback = fFeedback;
+                                    break;
+                                }
+                                else {
+                                    //DBG(fprintf(stderr, "out of memory! back to PLAY mode\n"));
+                                    pLS->state = STATE_PLAY;
+                                    break;
+                                }
+
                             }
-                            else {
-                                //DBG(fprintf(stderr, "out of memory! back to PLAY mode\n"));
-                                pLS->state = STATE_PLAY;
-                                break;
-                            }
 
+                            temp_buffer[lSampleIndex] = fDry * fInputSample;
                         }
-
-                        pfOutput[lSampleIndex] = fDry * fInputSample;
                     }
 
                 } break;
@@ -927,26 +944,28 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
                     for (;lSampleIndex < SampleCount;
                             lSampleIndex++)
                     {
-                        // wrap at the proper loop end
-                        lCurrPos = static_cast<unsigned int>(loop->dCurrPos);
-                        if ((char *)(lCurrPos + loop->pLoopStart) >= (pLS->pSampleBuf + pLS->lBufferSize)) {
-                            // stop the recording RIGHT NOW
-                            // we don't support loop crossing the end of memory
-                            // it's easier.
-                            //DBG(fprintf(stderr, "Entering PLAY state -- END of memory! %08x\n",
-                            //(unsigned) (pLS->pSampleBuf + pLS->lBufferSize) ));
-                            pLS->state = STATE_PLAY;
-                            break;
+                        for (unsigned c = 0; c < NUM_CHANNELS; c++) {
+                            // wrap at the proper loop end
+                            lCurrPos = static_cast<unsigned int>(loop->dCurrPos);
+                            if ((char *)(lCurrPos + loop->pLoopStart) >= (pLS->pSampleBuf + pLS->lBufferSize)) {
+                                // stop the recording RIGHT NOW
+                                // we don't support loop crossing the end of memory
+                                // it's easier.
+                                //DBG(fprintf(stderr, "Entering PLAY state -- END of memory! %08x\n",
+                                //(unsigned) (pLS->pSampleBuf + pLS->lBufferSize) ));
+                                pLS->state = STATE_PLAY;
+                                break;
+                            }
+                            fInputSample = pfInput[lSampleIndex];
+
+                            *(loop->pLoopStart + lCurrPos) = fInputSample;
+
+                            // increment according to current rate
+                            loop->dCurrPos = loop->dCurrPos + fRate;
+
+
+                            temp_buffer[lSampleIndex] = fDry * fInputSample;
                         }
-                        fInputSample = pfInput[lSampleIndex];
-
-                        *(loop->pLoopStart + lCurrPos) = fInputSample;
-
-                        // increment according to current rate
-                        loop->dCurrPos = loop->dCurrPos + fRate;
-
-
-                        pfOutput[lSampleIndex] = fDry * fInputSample;
                     }
 
                     // update loop values (in case we get stopped by an event)
@@ -967,46 +986,48 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
                     for (;lSampleIndex < SampleCount;
                             lSampleIndex++)
                     {
-                        lCurrPos = (unsigned int) loop->dCurrPos;
+                        for (unsigned c = 0; c < NUM_CHANNELS; c++) {
+                            lCurrPos = (unsigned int) loop->dCurrPos;
 
-                        fInputSample = pfInput[lSampleIndex];
+                            fInputSample = pfInput[lSampleIndex];
 
 
-                        if ( fInputSample > fTrigThresh
-                                || fTrigThresh == 0.0) {
-                            //DBG(fprintf(stderr,"Entering %d state\n", pLS->nextState));
-                            pLS->state = pLS->nextState;
-                            // reset for audio ramp
-                            pLS->lRampSamples = XFADE_SAMPLES;
-                            loop->pLoopStop = loop->pLoopStart + lCurrPos;
-                            loop->lLoopLength = (unsigned long) (loop->pLoopStop - loop->pLoopStart);
-                            loop->lCycles = 1;
-                            loop->lCycleLength = loop->lLoopLength;
-                            loop->dCurrPos = 0.0;
-                            break;
+                            if ( fInputSample > fTrigThresh
+                                    || fTrigThresh == 0.0) {
+                                //DBG(fprintf(stderr,"Entering %d state\n", pLS->nextState));
+                                pLS->state = pLS->nextState;
+                                // reset for audio ramp
+                                pLS->lRampSamples = XFADE_SAMPLES;
+                                loop->pLoopStop = loop->pLoopStart + lCurrPos;
+                                loop->lLoopLength = (unsigned long) (loop->pLoopStop - loop->pLoopStart);
+                                loop->lCycles = 1;
+                                loop->lCycleLength = loop->lLoopLength;
+                                loop->dCurrPos = 0.0;
+                                break;
+                            }
+
+                            *(loop->pLoopStart + lCurrPos) = fInputSample;
+
+                            // increment according to current rate
+                            loop->dCurrPos = loop->dCurrPos + fRate;
+
+
+                            if ((char *)(loop->pLoopStart + (unsigned int)loop->dCurrPos)
+                                    > (pLS->pSampleBuf + pLS->lBufferSize)) {
+                                // out of space! give up for now!
+                                // undo!
+                                pLS->state = STATE_PLAY;
+                                //undoLoop(pLS);
+                                //DBG(fprintf(stderr,"Record Stopped early! Out of memory!\n"));
+                                loop->dCurrPos = 0.0;
+                                break;
+                            }
+
+
+                            temp_buffer[lSampleIndex] = fDry * fInputSample;
+
+
                         }
-
-                        *(loop->pLoopStart + lCurrPos) = fInputSample;
-
-                        // increment according to current rate
-                        loop->dCurrPos = loop->dCurrPos + fRate;
-
-
-                        if ((char *)(loop->pLoopStart + (unsigned int)loop->dCurrPos)
-                                > (pLS->pSampleBuf + pLS->lBufferSize)) {
-                            // out of space! give up for now!
-                            // undo!
-                            pLS->state = STATE_PLAY;
-                            //undoLoop(pLS);
-                            //DBG(fprintf(stderr,"Record Stopped early! Out of memory!\n"));
-                            loop->dCurrPos = 0.0;
-                            break;
-                        }
-
-
-                        pfOutput[lSampleIndex] = fDry * fInputSample;
-
-
                     }
 
                     // update loop values (in case we get stopped by an event)
@@ -1029,61 +1050,63 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
                         for (;lSampleIndex < SampleCount;
                                 lSampleIndex++)
                         {
+                            for (unsigned c = 0; c < NUM_CHANNELS; c++) {
 
-                            lCurrPos =(unsigned int) fmod(loop->dCurrPos, loop->lLoopLength);
+                                lCurrPos =(unsigned int) fmod(loop->dCurrPos, loop->lLoopLength);
 
-                            fInputSample = pfInput[lSampleIndex];
+                                fInputSample = pfInput[lSampleIndex];
 
-                            fillLoops(pLS, loop, lCurrPos);
+                                fillLoops(pLS, loop, lCurrPos);
 
-                            if (pLS->state == STATE_OVERDUB)
-                            {
-                                // use our self as the source (we have been filled by the call above)
-                                fOutputSample = fWet  *  *(loop->pLoopStart + lCurrPos)
-                                    + fDry * fInputSample;
+                                if (pLS->state == STATE_OVERDUB)
+                                {
+                                    // use our self as the source (we have been filled by the call above)
+                                    fOutputSample = fWet  *  *(loop->pLoopStart + lCurrPos)
+                                        + fDry * fInputSample;
 
-                                *(loop->pLoopStart + lCurrPos) =  
-                                    (fInputSample + 0.95 * fFeedback *  *(loop->pLoopStart + lCurrPos));
-                            }
-                            else {
-                                // state REPLACE use only the new input
-                                // use our self as the source (we have been filled by the call above)
-                                fOutputSample = fDry * fInputSample;
+                                    *(loop->pLoopStart + lCurrPos) =  
+                                        (fInputSample + 0.95 * fFeedback *  *(loop->pLoopStart + lCurrPos));
+                                }
+                                else {
+                                    // state REPLACE use only the new input
+                                    // use our self as the source (we have been filled by the call above)
+                                    fOutputSample = fDry * fInputSample;
 
-                                *(loop->pLoopStart + lCurrPos) = fInputSample;
+                                    *(loop->pLoopStart + lCurrPos) = fInputSample;
 
-                            }
+                                }
 
-                            pfOutput[lSampleIndex] = fOutputSample;
+                                temp_buffer[lSampleIndex] = fOutputSample;
 
-                            // increment and wrap at the proper loop end
-                            loop->dCurrPos = loop->dCurrPos + fRate;
+                                // increment and wrap at the proper loop end
+                                loop->dCurrPos = loop->dCurrPos + fRate;
 
-                            if (loop->dCurrPos < 0)
-                            {
-                                // our rate must be negative
-                                // adjust around to the back
-                                loop->dCurrPos += loop->lLoopLength;
+                                if (loop->dCurrPos < 0)
+                                {
+                                    // our rate must be negative
+                                    // adjust around to the back
+                                    loop->dCurrPos += loop->lLoopLength;
 
-                                if (pLS->fNextCurrRate != 0) {
-                                    // commit the new rate at boundary (quantized)
-                                    pLS->fCurrRate = pLS->fNextCurrRate;
-                                    pLS->fNextCurrRate = 0.0;
-                                    //DBG(fprintf(stderr, "Starting quantized rate change\n"));
+                                    if (pLS->fNextCurrRate != 0) {
+                                        // commit the new rate at boundary (quantized)
+                                        pLS->fCurrRate = pLS->fNextCurrRate;
+                                        pLS->fNextCurrRate = 0.0;
+                                        //DBG(fprintf(stderr, "Starting quantized rate change\n"));
+                                    }
+
+                                }
+                                else if (loop->dCurrPos >= loop->lLoopLength) {
+                                    // wrap around length
+                                    loop->dCurrPos = fmod(loop->dCurrPos, loop->lLoopLength);
+                                    if (pLS->fNextCurrRate != 0) {
+                                        // commit the new rate at boundary (quantized)
+                                        pLS->fCurrRate = pLS->fNextCurrRate;
+                                        pLS->fNextCurrRate = 0.0;
+                                        //DBG(fprintf(stderr, "Starting quantized rate change\n"));
+                                    }
                                 }
 
                             }
-                            else if (loop->dCurrPos >= loop->lLoopLength) {
-                                // wrap around length
-                                loop->dCurrPos = fmod(loop->dCurrPos, loop->lLoopLength);
-                                if (pLS->fNextCurrRate != 0) {
-                                    // commit the new rate at boundary (quantized)
-                                    pLS->fCurrRate = pLS->fNextCurrRate;
-                                    pLS->fNextCurrRate = 0.0;
-                                    //DBG(fprintf(stderr, "Starting quantized rate change\n"));
-                                }
-                            }
-
                         }
 
 
@@ -1114,79 +1137,81 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
                         for (;lSampleIndex < SampleCount;
                                 lSampleIndex++)
                         {
+                            for (unsigned c = 0; c < NUM_CHANNELS; c++) {
 
-                            lpCurrPos =(unsigned int) fmod(loop->dCurrPos + loop->lStartAdj, srcloop->lLoopLength);
-                            slCurrPos =(long) loop->dCurrPos;
+                                lpCurrPos =(unsigned int) fmod(loop->dCurrPos + loop->lStartAdj, srcloop->lLoopLength);
+                                slCurrPos =(long) loop->dCurrPos;
 
-                            fillLoops(pLS, loop, lpCurrPos);
+                                fillLoops(pLS, loop, lpCurrPos);
 
-                            fInputSample = pfInput[lSampleIndex];
-
-
-                            // always use the source loop as the source
-
-                            fOutputSample = (fWet *  *(srcloop->pLoopStart + lpCurrPos)
-                                    + fDry * fInputSample);
+                                fInputSample = pfInput[lSampleIndex];
 
 
-                            if (slCurrPos < 0) {
-                                // this is part of the loop that we need to ignore
-                                // fprintf(stderr, "Ignoring at %ul\n", lCurrPos);
-                            }
-                            else if ((loop->lCycles <=1 && *pLS->pfQuantMode != 0)
-                                    || (slCurrPos > (unsigned)(loop->lMarkEndL) && *pLS->pfRoundMode == 0)) {
-                                // do not include the new input
-                                *(loop->pLoopStart + slCurrPos)
-                                    = fFeedback *  *(srcloop->pLoopStart + lpCurrPos);
-                                // fprintf(stderr, "Not including input at %ul\n", lCurrPos);
-                            }
-                            else {
-                                *(loop->pLoopStart + slCurrPos)
-                                    = (fInputSample + 0.95 *  fFeedback *  *(srcloop->pLoopStart + lpCurrPos));
-                            }
+                                // always use the source loop as the source
 
-                            pfOutput[lSampleIndex] = fOutputSample;
-
-                            // increment
-                            loop->dCurrPos = loop->dCurrPos + fRate;
+                                fOutputSample = (fWet *  *(srcloop->pLoopStart + lpCurrPos)
+                                        + fDry * fInputSample);
 
 
-                            if (slCurrPos > 0 && (unsigned)(*(loop->pLoopStart + slCurrPos))
-                                    > (unsigned)(*(pLS->pSampleBuf + pLS->lBufferSize))) {
-                                // out of space! give up for now!
-                                // undo!
-                                pLS->state = STATE_PLAY;
-                                undoLoop(pLS);
-                                //DBG(fprintf(stderr,"Multiply Undone! Out of memory!\n"));
-                                break;
-                            }
+                                if (slCurrPos < 0) {
+                                    // this is part of the loop that we need to ignore
+                                    // fprintf(stderr, "Ignoring at %ul\n", lCurrPos);
+                                }
+                                else if ((loop->lCycles <=1 && *pLS->pfQuantMode != 0)
+                                        || (slCurrPos > (unsigned)(loop->lMarkEndL) && *pLS->pfRoundMode == 0)) {
+                                    // do not include the new input
+                                    *(loop->pLoopStart + slCurrPos)
+                                        = fFeedback *  *(srcloop->pLoopStart + lpCurrPos);
+                                    // fprintf(stderr, "Not including input at %ul\n", lCurrPos);
+                                }
+                                else {
+                                    *(loop->pLoopStart + slCurrPos)
+                                        = (fInputSample + 0.95 *  fFeedback *  *(srcloop->pLoopStart + lpCurrPos));
+                                }
 
-                            // ASSUMPTION: our rate is +1 only
-                            if (loop->dCurrPos  >= (loop->lLoopLength)) {
-                                if (loop->dCurrPos >= loop->lMarkEndH) {
-                                    // we be done this only happens in round mode
-                                    // adjust curr position
-                                    loop->lMarkEndH = MAXLONG;
-                                    backfill = loop->backfill = 0;
-                                    // do adjust it for our new length
-                                    loop->dCurrPos = 0.0;
+                                temp_buffer[lSampleIndex] = fOutputSample;
 
-                                    loop->lLoopLength = loop->lCycles * loop->lCycleLength;
-                                    loop->pLoopStop = loop->pLoopStart + loop->lLoopLength;
+                                // increment
+                                loop->dCurrPos = loop->dCurrPos + fRate;
 
 
-                                    loop = transitionToNext(pLS, loop, pLS->nextState);
+                                if (slCurrPos > 0 && (unsigned)(*(loop->pLoopStart + slCurrPos))
+                                        > (unsigned)(*(pLS->pSampleBuf + pLS->lBufferSize))) {
+                                    // out of space! give up for now!
+                                    // undo!
+                                    pLS->state = STATE_PLAY;
+                                    undoLoop(pLS);
+                                    //DBG(fprintf(stderr,"Multiply Undone! Out of memory!\n"));
                                     break;
                                 }
-                                // increment cycle and looplength
-                                loop->lCycles += 1;
-                                loop->lLoopLength += loop->lCycleLength;
-                                loop->pLoopStop = loop->pLoopStart + loop->lLoopLength;
-                                //loop->lLoopStop = loop->lLoopStart + loop->lLoopLength;
-                                // this signifies the end of the original cycle
-                                loop->firsttime = 0;
-                                //DBG(fprintf(stderr,"Multiply added cycle %lu\n", loop->lCycles));
 
+                                // ASSUMPTION: our rate is +1 only
+                                if (loop->dCurrPos  >= (loop->lLoopLength)) {
+                                    if (loop->dCurrPos >= loop->lMarkEndH) {
+                                        // we be done this only happens in round mode
+                                        // adjust curr position
+                                        loop->lMarkEndH = MAXLONG;
+                                        backfill = loop->backfill = 0;
+                                        // do adjust it for our new length
+                                        loop->dCurrPos = 0.0;
+
+                                        loop->lLoopLength = loop->lCycles * loop->lCycleLength;
+                                        loop->pLoopStop = loop->pLoopStart + loop->lLoopLength;
+
+
+                                        loop = transitionToNext(pLS, loop, pLS->nextState);
+                                        break;
+                                    }
+                                    // increment cycle and looplength
+                                    loop->lCycles += 1;
+                                    loop->lLoopLength += loop->lCycleLength;
+                                    loop->pLoopStop = loop->pLoopStart + loop->lLoopLength;
+                                    //loop->lLoopStop = loop->lLoopStart + loop->lLoopLength;
+                                    // this signifies the end of the original cycle
+                                    loop->firsttime = 0;
+                                    //DBG(fprintf(stderr,"Multiply added cycle %lu\n", loop->lCycles));
+
+                                }
                             }
                         }
                     }
@@ -1212,93 +1237,95 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
                         for (;lSampleIndex < SampleCount;
                                 lSampleIndex++)
                         {
+                            for (unsigned c = 0; c < NUM_CHANNELS; c++) {
 
-                            lpCurrPos =(unsigned int) fmod(loop->dCurrPos, srcloop->lLoopLength);
-                            lCurrPos =(unsigned int) loop->dCurrPos;
+                                lpCurrPos =(unsigned int) fmod(loop->dCurrPos, srcloop->lLoopLength);
+                                lCurrPos =(unsigned int) loop->dCurrPos;
 
-                            fillLoops(pLS, loop, lCurrPos);
+                                fillLoops(pLS, loop, lCurrPos);
 
-                            fInputSample = pfInput[lSampleIndex];
+                                fInputSample = pfInput[lSampleIndex];
 
-                            if (firsttime && *pLS->pfQuantMode != 0 )
-                            {
-                                // just the source and input
-                                fOutputSample = (fWet *  *(srcloop->pLoopStart + lpCurrPos)
-                                        + fDry * fInputSample);
-
-                                // do not include the new input
-                                //*(loop->pLoopStart + lCurrPos)
-                                //  = fFeedback *  *(srcloop->pLoopStart + lpCurrPos);
-
-                            }
-                            else if (lCurrPos > loop->lMarkEndL && *pLS->pfRoundMode == 0)
-                            {
-                                // insert zeros, we finishing an insert with nothingness
-                                fOutputSample = fDry * fInputSample;
-
-                                *(loop->pLoopStart + lCurrPos) = 0.0;
-
-                            }
-                            else {
-                                // just the input we are now inserting
-                                fOutputSample = fDry * fInputSample;
-
-                                *(loop->pLoopStart + lCurrPos) = (fInputSample);
-
-                            }
-
-
-                            pfOutput[lSampleIndex] = fOutputSample;
-
-                            // increment
-                            loop->dCurrPos = loop->dCurrPos + fRate;
-
-
-
-                            if ((unsigned long)loop->dCurrPos >= loop->lMarkEndH) {
-                                // we be done.. this only happens in round mode
-                                // adjust curr position to 0
-
-
-                                loop->lMarkEndL = (unsigned long) loop->dCurrPos;
-                                loop->lMarkEndH = loop->lLoopLength - 1;
-                                backfill = loop->backfill = 1;
-
-                                loop->lLoopLength = loop->lCycles * loop->lCycleLength;
-                                loop->pLoopStop = loop->pLoopStart + loop->lLoopLength;
-
-
-                                loop = transitionToNext(pLS, loop, pLS->nextState);
-                                //DBG(fprintf(stderr,"Entering state %d from insert\n", pLS->state));
-                                break;
-                            }
-
-                            // ASSUMPTION: our rate is +1 only
-                            if (firsttime && lCurrPos % loop->lCycleLength == 0)
-                            {
-                                firsttime = loop->firsttime = 0;
-                                //DBG(fprintf(stderr, "first time done\n"));
-                            }
-
-                            if ((lCurrPos % loop->lCycleLength) == ((loop->lInsPos-1) % loop->lCycleLength)) {
-
-                                if ((unsigned)(*(loop->pLoopStart + loop->lLoopLength + loop->lCycleLength))
-                                        > (unsigned)(*(pLS->pSampleBuf + pLS->lBufferSize)))
+                                if (firsttime && *pLS->pfQuantMode != 0 )
                                 {
-                                    // out of space! give up for now!
-                                    pLS->state = STATE_PLAY;
-                                    //undoLoop(pLS);
-                                    //DBG(fprintf(stderr,"Insert finish early! Out of memory!\n"));
-                                    break;
+                                    // just the source and input
+                                    fOutputSample = (fWet *  *(srcloop->pLoopStart + lpCurrPos)
+                                            + fDry * fInputSample);
+
+                                    // do not include the new input
+                                    //*(loop->pLoopStart + lCurrPos)
+                                    //  = fFeedback *  *(srcloop->pLoopStart + lpCurrPos);
+
+                                }
+                                else if (lCurrPos > loop->lMarkEndL && *pLS->pfRoundMode == 0)
+                                {
+                                    // insert zeros, we finishing an insert with nothingness
+                                    fOutputSample = fDry * fInputSample;
+
+                                    *(loop->pLoopStart + lCurrPos) = 0.0;
+
                                 }
                                 else {
-                                    // increment cycle and looplength
-                                    loop->lCycles += 1;
-                                    loop->lLoopLength += loop->lCycleLength;
+                                    // just the input we are now inserting
+                                    fOutputSample = fDry * fInputSample;
+
+                                    *(loop->pLoopStart + lCurrPos) = (fInputSample);
+
+                                }
+
+
+                                temp_buffer[lSampleIndex] = fOutputSample;
+
+                                // increment
+                                loop->dCurrPos = loop->dCurrPos + fRate;
+
+
+
+                                if ((unsigned long)loop->dCurrPos >= loop->lMarkEndH) {
+                                    // we be done.. this only happens in round mode
+                                    // adjust curr position to 0
+
+
+                                    loop->lMarkEndL = (unsigned long) loop->dCurrPos;
+                                    loop->lMarkEndH = loop->lLoopLength - 1;
+                                    backfill = loop->backfill = 1;
+
+                                    loop->lLoopLength = loop->lCycles * loop->lCycleLength;
                                     loop->pLoopStop = loop->pLoopStart + loop->lLoopLength;
-                                    //loop->lLoopStop = loop->lLoopStart + loop->lLoopLength;
-                                    // this signifies the end of the original cycle
-                                    //DBG(fprintf(stderr,"insert added cycle. Total=%lu\n", loop->lCycles));
+
+
+                                    loop = transitionToNext(pLS, loop, pLS->nextState);
+                                    //DBG(fprintf(stderr,"Entering state %d from insert\n", pLS->state));
+                                    break;
+                                }
+
+                                // ASSUMPTION: our rate is +1 only
+                                if (firsttime && lCurrPos % loop->lCycleLength == 0)
+                                {
+                                    firsttime = loop->firsttime = 0;
+                                    //DBG(fprintf(stderr, "first time done\n"));
+                                }
+
+                                if ((lCurrPos % loop->lCycleLength) == ((loop->lInsPos-1) % loop->lCycleLength)) {
+
+                                    if ((unsigned)(*(loop->pLoopStart + loop->lLoopLength + loop->lCycleLength))
+                                            > (unsigned)(*(pLS->pSampleBuf + pLS->lBufferSize)))
+                                    {
+                                        // out of space! give up for now!
+                                        pLS->state = STATE_PLAY;
+                                        //undoLoop(pLS);
+                                        //DBG(fprintf(stderr,"Insert finish early! Out of memory!\n"));
+                                        break;
+                                    }
+                                    else {
+                                        // increment cycle and looplength
+                                        loop->lCycles += 1;
+                                        loop->lLoopLength += loop->lCycleLength;
+                                        loop->pLoopStop = loop->pLoopStart + loop->lLoopLength;
+                                        //loop->lLoopStop = loop->lLoopStart + loop->lLoopLength;
+                                        // this signifies the end of the original cycle
+                                        //DBG(fprintf(stderr,"insert added cycle. Total=%lu\n", loop->lCycles));
+                                    }
                                 }
                             }
                         }
@@ -1389,81 +1416,83 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
                         for (;lSampleIndex < SampleCount;
                                 lSampleIndex++)
                         {
-                            lCurrPos =(unsigned int) fmod(loop->dCurrPos, loop->lLoopLength);
-                            //fprintf(stderr, "curr = %u\n", lCurrPos);
+                            for (unsigned c = 0; c < NUM_CHANNELS; c++) {
+                                lCurrPos =(unsigned int) fmod(loop->dCurrPos, loop->lLoopLength);
+                                //fprintf(stderr, "curr = %u\n", lCurrPos);
 
 
 
-                            // modify fWet if we are in a ramp up/down
-                            if (pLS->lRampSamples > 0) {
-                                if (pLS->state == STATE_MUTE) {
-                                    //negative linear ramp
-                                    tmpWet = fWet * (pLS->lRampSamples * 1.0) / XFADE_SAMPLES;
+                                // modify fWet if we are in a ramp up/down
+                                if (pLS->lRampSamples > 0) {
+                                    if (pLS->state == STATE_MUTE) {
+                                        //negative linear ramp
+                                        tmpWet = fWet * (pLS->lRampSamples * 1.0) / XFADE_SAMPLES;
+                                    }
+                                    else {
+                                        // positive linear ramp
+                                        tmpWet = fWet * (XFADE_SAMPLES - pLS->lRampSamples)
+                                            * 1.0 / XFADE_SAMPLES;
+                                    }
+
+                                    pLS->lRampSamples -= 1;
                                 }
-                                else {
-                                    // positive linear ramp
-                                    tmpWet = fWet * (XFADE_SAMPLES - pLS->lRampSamples)
-                                        * 1.0 / XFADE_SAMPLES;
+
+
+                                // fill loops if necessary
+                                fillLoops(pLS, loop, lCurrPos);
+
+
+                                fInputSample = pfInput[lSampleIndex];
+                                fOutputSample =   tmpWet *  *(loop->pLoopStart + lCurrPos)
+                                    + fDry * fInputSample;
+
+                                // increment and wrap at the proper loop end
+                                loop->dCurrPos = loop->dCurrPos + fRate;
+
+                                temp_buffer[lSampleIndex] = fOutputSample;
+
+
+                                if (loop->dCurrPos >= loop->lLoopLength) {
+                                    if (pLS->state == STATE_ONESHOT) {
+                                        // done with one shot
+                                        //DBG(fprintf(stderr, "finished ONESHOT\n"));
+                                        pLS->state = STATE_MUTE;
+                                        pLS->lRampSamples = XFADE_SAMPLES;
+                                        //fWet = 0.0;
+                                    }
+
+                                    if (pLS->fNextCurrRate != 0) {
+                                        // commit the new rate at boundary (quantized)
+                                        pLS->fCurrRate = pLS->fNextCurrRate;
+                                        pLS->fNextCurrRate = 0.0;
+                                        //DBG(fprintf(stderr, "Starting quantized rate change\n"));
+                                    }
+
+                                }
+                                else if (loop->dCurrPos < 0)
+                                {
+                                    // our rate must be negative
+                                    // adjust around to the back
+                                    loop->dCurrPos += loop->lLoopLength;
+                                    if (pLS->state == STATE_ONESHOT) {
+                                        // done with one shot
+                                        //DBG(fprintf(stderr, "finished ONESHOT neg\n"));
+                                        pLS->state = STATE_MUTE;
+                                        //fWet = 0.0;
+                                        pLS->lRampSamples = XFADE_SAMPLES;
+                                    }
+
+                                    if (pLS->fNextCurrRate != 0) {
+                                        // commit the new rate at boundary (quantized)
+                                        pLS->fCurrRate = pLS->fNextCurrRate;
+                                        pLS->fNextCurrRate = 0.0;
+                                        //DBG(fprintf(stderr, "Starting quantized rate change\n"));
+                                    }
+
                                 }
 
-                                pLS->lRampSamples -= 1;
+
                             }
-
-
-                            // fill loops if necessary
-                            fillLoops(pLS, loop, lCurrPos);
-
-
-                            fInputSample = pfInput[lSampleIndex];
-                            fOutputSample =   tmpWet *  *(loop->pLoopStart + lCurrPos)
-                                + fDry * fInputSample;
-
-                            // increment and wrap at the proper loop end
-                            loop->dCurrPos = loop->dCurrPos + fRate;
-
-                            pfOutput[lSampleIndex] = fOutputSample;
-
-
-                            if (loop->dCurrPos >= loop->lLoopLength) {
-                                if (pLS->state == STATE_ONESHOT) {
-                                    // done with one shot
-                                    //DBG(fprintf(stderr, "finished ONESHOT\n"));
-                                    pLS->state = STATE_MUTE;
-                                    pLS->lRampSamples = XFADE_SAMPLES;
-                                    //fWet = 0.0;
-                                }
-
-                                if (pLS->fNextCurrRate != 0) {
-                                    // commit the new rate at boundary (quantized)
-                                    pLS->fCurrRate = pLS->fNextCurrRate;
-                                    pLS->fNextCurrRate = 0.0;
-                                    //DBG(fprintf(stderr, "Starting quantized rate change\n"));
-                                }
-
-                            }
-                            else if (loop->dCurrPos < 0)
-                            {
-                                // our rate must be negative
-                                // adjust around to the back
-                                loop->dCurrPos += loop->lLoopLength;
-                                if (pLS->state == STATE_ONESHOT) {
-                                    // done with one shot
-                                    //DBG(fprintf(stderr, "finished ONESHOT neg\n"));
-                                    pLS->state = STATE_MUTE;
-                                    //fWet = 0.0;
-                                    pLS->lRampSamples = XFADE_SAMPLES;
-                                }
-
-                                if (pLS->fNextCurrRate != 0) {
-                                    // commit the new rate at boundary (quantized)
-                                    pLS->fCurrRate = pLS->fNextCurrRate;
-                                    pLS->fNextCurrRate = 0.0;
-                                    //DBG(fprintf(stderr, "Starting quantized rate change\n"));
-                                }
-
-                            }
-
-
                         }
 
 
@@ -1488,52 +1517,54 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
                         for (;lSampleIndex < SampleCount;
                                 lSampleIndex++)
                         {
-                            // wrap properly
-                            lCurrPos =(unsigned int) fmod(loop->dCurrPos, loop->lLoopLength);
+                            for (unsigned c = 0; c < NUM_CHANNELS; c++) {
+                                // wrap properly
+                                lCurrPos =(unsigned int) fmod(loop->dCurrPos, loop->lLoopLength);
 
-                            fInputSample = pfInput[lSampleIndex];
+                                fInputSample = pfInput[lSampleIndex];
 
-                            if (backfill && lCurrPos >= loop->lMarkEndL && lCurrPos <= loop->lMarkEndH) {
-                                // our delay buffer is invalid here, clear it
-                                *(loop->pLoopStart + lCurrPos) = 0.0;
+                                if (backfill && lCurrPos >= loop->lMarkEndL && lCurrPos <= loop->lMarkEndH) {
+                                    // our delay buffer is invalid here, clear it
+                                    *(loop->pLoopStart + lCurrPos) = 0.0;
 
-                                if (fRate > 0) {
-                                    loop->lMarkEndL = lCurrPos;
+                                    if (fRate > 0) {
+                                        loop->lMarkEndL = lCurrPos;
+                                    }
+                                    else {
+                                        loop->lMarkEndH = lCurrPos;
+                                    }
                                 }
-                                else {
-                                    loop->lMarkEndH = lCurrPos;
+
+
+                                fOutputSample =   fWet *  *(loop->pLoopStart + lCurrPos)
+                                    + fDry * fInputSample;
+
+
+                                if (!pLS->bHoldMode) {
+                                    // now fill in from input if we are not holding the delay
+                                    *(loop->pLoopStart + lCurrPos) = 
+                                        (fInputSample +  fFeedback *  *(loop->pLoopStart + lCurrPos));
                                 }
+
+                                temp_buffer[lSampleIndex] = fOutputSample;
+
+                                // increment
+                                loop->dCurrPos = loop->dCurrPos + fRate;
+
+                                if (backfill && loop->lMarkEndL == loop->lMarkEndH) {
+                                    // no need to clear the buf first now
+                                    backfill = loop->backfill = 0;
+                                }
+
+                                else if (loop->dCurrPos < 0)
+                                {
+                                    // our rate must be negative
+                                    // adjust around to the back
+                                    loop->dCurrPos += loop->lLoopLength;
+                                }
+
+
                             }
-
-
-                            fOutputSample =   fWet *  *(loop->pLoopStart + lCurrPos)
-                                + fDry * fInputSample;
-
-
-                            if (!pLS->bHoldMode) {
-                                // now fill in from input if we are not holding the delay
-                                *(loop->pLoopStart + lCurrPos) = 
-                                    (fInputSample +  fFeedback *  *(loop->pLoopStart + lCurrPos));
-                            }
-
-                            pfOutput[lSampleIndex] = fOutputSample;
-
-                            // increment
-                            loop->dCurrPos = loop->dCurrPos + fRate;
-
-                            if (backfill && loop->lMarkEndL == loop->lMarkEndH) {
-                                // no need to clear the buf first now
-                                backfill = loop->backfill = 0;
-                            }
-
-                            else if (loop->dCurrPos < 0)
-                            {
-                                // our rate must be negative
-                                // adjust around to the back
-                                loop->dCurrPos += loop->lLoopLength;
-                            }
-
-
                         }
 
                         // recenter around the mod
@@ -1563,9 +1594,21 @@ passthrough:
         // simply play the input out directly
         // no loop has been created yet
         for (;lSampleIndex < SampleCount;
-                lSampleIndex++)
+                lSampleIndex += NUM_CHANNELS)
         {
-            pfOutput[lSampleIndex] = fDry * pfInput[lSampleIndex];
+            float sample[2] = {0.0, 0.0};
+            sample[0] = plugin->in_0[lSampleIndex];
+            sample[1] = plugin->in_1[lSampleIndex];
+
+            for (unsigned c = 0; c < NUM_CHANNELS; c++) {
+                temp_buffer[lSampleIndex + c] = sample[c];
+            }
+        }
+
+        for (unsigned f = 0; f < SampleCount; f += NUM_CHANNELS) {
+            pfOutput[f] = temp_buffer[f];
+            pfOutput_1[f] = temp_buffer[f + 1];
+
         }
 
 
@@ -1618,8 +1661,6 @@ loopend:
     }
 
 }
-
-/*****************************************************************************/
 
 /*****************************************************************************/
 

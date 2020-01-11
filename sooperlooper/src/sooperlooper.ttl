@@ -44,7 +44,7 @@ lv2:port [
   lv2:index 1;
   lv2:symbol "input1";
   lv2:name "Input1";
-  lv2:shortName "Input0";
+  lv2:shortName "Input1";
 ],
 [
   a lv2:AudioPort, lv2:OutputPort;
