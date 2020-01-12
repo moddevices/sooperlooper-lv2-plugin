@@ -42,6 +42,7 @@
 
 enum {IN_0, IN_1, OUT_0, OUT_1, PLAY_PAUSE, RECORD, RESET, UNDO, REDO, DRY_LEVEL, PLUGIN_PORT_COUNT};
 
+#define TEMP_BUFFER_SIZE 1024
 #define NUM_CHANNELS 2
 #define PLUGIN_AUDIO_PORT_COUNT     4
 #define PLUGIN_CONTROL_PORT_COUNT   PLUGIN_PORT_COUNT - PLUGIN_AUDIO_PORT_COUNT
@@ -298,8 +299,7 @@ public:
     int recording;
     int params_state[PLUGIN_CONTROL_PORT_COUNT];
 
-    float **inputs[1024];
-    float temp_buffer[1024]; //TODO check when this buffer needs to be cleared
+    float temp_buffer[TEMP_BUFFER_SIZE]; //TODO check when this buffer needs to be cleared
 
     //lowpass variables
     double a0;
@@ -686,9 +686,6 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
     SooperLooperPlugin *plugin;
     plugin = (SooperLooperPlugin *) instance;
 
-    plugin->inputs[0] = &plugin->in_0;
-    plugin->inputs[1] = &plugin->in_1;
-
     LADSPA_Data * pfOutput;
     LADSPA_Data * pfOutput_1;
     LADSPA_Data fWet=1.0, tmpWet;
@@ -965,7 +962,6 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
                                 pLS->state = STATE_PLAY;
                                 break;
                             }
-                            //fInputSample = *plugin->inputs[c][lSampleIndex];
                             fInputSample = (c == 0) ? plugin->in_0[lSampleIndex] : plugin->in_1[lSampleIndex];
 
                             *(loop->pLoopStart + lCurrPos) = fInputSample;
@@ -1740,6 +1736,10 @@ LV2_Handle SooperLooperPlugin::instantiate(const LV2_Descriptor* descriptor, dou
     plugin->b1 = exp(-2.0 * M_PI * frequency);
     plugin->a0 = 1.0 - plugin->b1;
     plugin->dryVolumeCoef = 0.0;
+
+    for (unsigned i = 0; i < TEMP_BUFFER_SIZE; i++) {
+        plugin->temp_buffer[i] = 0.0;
+    }
 
     return (LV2_Handle)plugin;
 }
