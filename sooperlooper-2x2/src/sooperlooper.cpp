@@ -293,6 +293,7 @@ public:
     float *redo;
     float *dryLevel;
     SooperLooper *pLS;
+    float dryVolumeCoef;
     int playing;
     int started;
     int recording;
@@ -300,6 +301,11 @@ public:
 
     float **inputs[1024];
     float temp_buffer[1024]; //TODO check when this buffer needs to be cleared
+
+    //lowpass variables
+    double a0;
+    double b1;
+    double z1;
 };
 
 
@@ -686,7 +692,7 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
 
     LADSPA_Data * pfOutput;
     LADSPA_Data * pfOutput_1;
-    LADSPA_Data fDry = *plugin->dryLevel;
+    LADSPA_Data fDry = plugin->dryVolumeCoef;
     LADSPA_Data fWet=1.0, tmpWet;
     LADSPA_Data fInputSample;
     LADSPA_Data fOutputSample;
@@ -878,6 +884,12 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
     /* end control reading */
 
     long int pass_index = 0;
+
+    //calculate logarithmic value for dry level
+    float volumeCoef = pow(10.0f, (1 - *plugin->dryLevel) * -45 / 20.0f);
+    if (*plugin->dryLevel == 0.0f) {
+        volumeCoef = 0.0;
+    }
 
     while (lSampleIndex < SampleCount)
     {
@@ -1595,8 +1607,10 @@ passthrough:
         for (;lSampleIndex < SampleCount;
                 lSampleIndex++)
         {
-            plugin->temp_buffer[pass_index] = fDry * plugin->in_0[lSampleIndex];
-            plugin->temp_buffer[pass_index + 1] = fDry * plugin->in_1[lSampleIndex];
+            plugin->z1 = volumeCoef * plugin->a0 + plugin->z1 * plugin->b1;
+            plugin->dryVolumeCoef = plugin->z1;
+            plugin->temp_buffer[pass_index] = plugin->dryVolumeCoef * plugin->in_0[lSampleIndex];
+            plugin->temp_buffer[pass_index + 1] = plugin->dryVolumeCoef * plugin->in_1[lSampleIndex];
             pass_index += 2;
         }
 
@@ -1721,6 +1735,14 @@ LV2_Handle SooperLooperPlugin::instantiate(const LV2_Descriptor* descriptor, dou
    pLS->pfQuantMode = &pLS->fQuantizeMode;
    pLS->pfRoundMode = &pLS->fRoundMode;
    pLS->pfRedoTapMode = &pLS->fRedoTapMode;
+
+   //init lowpass
+    plugin->z1 = 0.0;
+    double frequency = 20.0 / SampleRate;
+    plugin->b1 = exp(-2.0 * M_PI * frequency);
+    plugin->a0 = 1.0 - plugin->b1;
+    plugin->dryVolumeCoef = 0.0;
+
     return (LV2_Handle)plugin;
 }
 
