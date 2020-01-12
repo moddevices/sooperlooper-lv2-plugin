@@ -198,7 +198,6 @@ typedef struct {
     /* Ports:
        ------ */
     LADSPA_Data * pfWet;
-    LADSPA_Data * pfDry;
 
     /* Feedback 0 for none, 1 for infinite */
     LADSPA_Data * pfFeedback;
@@ -692,7 +691,6 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
 
     LADSPA_Data * pfOutput;
     LADSPA_Data * pfOutput_1;
-    LADSPA_Data fDry = plugin->dryVolumeCoef;
     LADSPA_Data fWet=1.0, tmpWet;
     LADSPA_Data fInputSample;
     LADSPA_Data fOutputSample;
@@ -781,8 +779,8 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
     if (pLS->pfWet)
         fWet = LIMIT_BETWEEN_0_AND_1(*(pLS->pfWet));
 
-    if (pLS->pfDry)
-        fDry = LIMIT_BETWEEN_0_AND_1(*(pLS->pfDry));
+    //if (pLS->pfDry)
+    //    fDry = LIMIT_BETWEEN_0_AND_1(*(pLS->pfDry));
 
 
     if (pLS->pfFeedback) {
@@ -941,7 +939,7 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
 
                             }
 
-                            plugin->temp_buffer[interPolIndex++] = fDry * fInputSample;
+                            plugin->temp_buffer[interPolIndex++] = plugin->dryVolumeCoef * fInputSample;
 
                         }
                     }
@@ -976,7 +974,7 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
                             loop->dCurrPos = loop->dCurrPos + fRate;
 
 
-                            plugin->temp_buffer[interPolIndex++] = fDry * fInputSample;
+                            plugin->temp_buffer[interPolIndex++] = plugin->dryVolumeCoef * fInputSample;
                         }
                     }
 
@@ -1035,7 +1033,7 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
                             }
 
 
-                            plugin->temp_buffer[interPolIndex++] = fDry * fInputSample;
+                            plugin->temp_buffer[interPolIndex++] = plugin->dryVolumeCoef * fInputSample;
 
 
                         }
@@ -1073,7 +1071,7 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
                                 {
                                     // use our self as the source (we have been filled by the call above)
                                     fOutputSample = fWet  *  *(loop->pLoopStart + lCurrPos)
-                                        + fDry * fInputSample;
+                                        + plugin->dryVolumeCoef * fInputSample;
 
                                     *(loop->pLoopStart + lCurrPos) =  
                                         (fInputSample + 0.95 * fFeedback *  *(loop->pLoopStart + lCurrPos));
@@ -1081,7 +1079,7 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
                                 else {
                                     // state REPLACE use only the new input
                                     // use our self as the source (we have been filled by the call above)
-                                    fOutputSample = fDry * fInputSample;
+                                    fOutputSample = plugin->dryVolumeCoef * fInputSample;
 
                                     *(loop->pLoopStart + lCurrPos) = fInputSample;
 
@@ -1161,7 +1159,7 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
                                 // always use the source loop as the source
 
                                 fOutputSample = (fWet *  *(srcloop->pLoopStart + lpCurrPos)
-                                        + fDry * fInputSample);
+                                        + plugin->dryVolumeCoef * fInputSample);
 
 
                                 if (slCurrPos < 0) {
@@ -1261,7 +1259,7 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
                                 {
                                     // just the source and input
                                     fOutputSample = (fWet *  *(srcloop->pLoopStart + lpCurrPos)
-                                            + fDry * fInputSample);
+                                            + plugin->dryVolumeCoef * fInputSample);
 
                                     // do not include the new input
                                     //*(loop->pLoopStart + lCurrPos)
@@ -1271,14 +1269,14 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
                                 else if (lCurrPos > loop->lMarkEndL && *pLS->pfRoundMode == 0)
                                 {
                                     // insert zeros, we finishing an insert with nothingness
-                                    fOutputSample = fDry * fInputSample;
+                                    fOutputSample = plugin->dryVolumeCoef * fInputSample;
 
                                     *(loop->pLoopStart + lCurrPos) = 0.0;
 
                                 }
                                 else {
                                     // just the input we are now inserting
-                                    fOutputSample = fDry * fInputSample;
+                                    fOutputSample = plugin->dryVolumeCoef * fInputSample;
 
                                     *(loop->pLoopStart + lCurrPos) = (fInputSample);
 
@@ -1455,7 +1453,7 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
 
                                 fInputSample = (c == 0) ? plugin->in_0[lSampleIndex] : plugin->in_1[lSampleIndex];
                                 fOutputSample =   tmpWet *  *(loop->pLoopStart + lCurrPos)
-                                    + fDry * fInputSample;
+                                    + plugin->dryVolumeCoef * fInputSample;
 
                                 // increment and wrap at the proper loop end
                                 loop->dCurrPos = loop->dCurrPos + fRate;
@@ -1548,7 +1546,7 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
 
 
                                 fOutputSample =   fWet *  *(loop->pLoopStart + lCurrPos)
-                                    + fDry * fInputSample;
+                                    + plugin->dryVolumeCoef * fInputSample;
 
 
                                 if (!pLS->bHoldMode) {
@@ -1607,8 +1605,6 @@ passthrough:
         for (;lSampleIndex < SampleCount;
                 lSampleIndex++)
         {
-            plugin->z1 = volumeCoef * plugin->a0 + plugin->z1 * plugin->b1;
-            plugin->dryVolumeCoef = plugin->z1;
             plugin->temp_buffer[pass_index] = plugin->dryVolumeCoef * plugin->in_0[lSampleIndex];
             plugin->temp_buffer[pass_index + 1] = plugin->dryVolumeCoef * plugin->in_1[lSampleIndex];
             pass_index += 2;
@@ -1666,6 +1662,8 @@ loopend:
     //END_OF_LOOP
     long int s_index = 0;
     for (unsigned f = 0; f < SampleCount; f++) {
+        plugin->z1 = volumeCoef * plugin->a0 + plugin->z1 * plugin->b1;
+        plugin->dryVolumeCoef = plugin->z1;
         pfOutput[f] = plugin->temp_buffer[s_index];
         pfOutput_1[f] = plugin->temp_buffer[s_index + 1];
         s_index+=NUM_CHANNELS;
