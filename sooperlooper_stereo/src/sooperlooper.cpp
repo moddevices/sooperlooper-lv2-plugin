@@ -40,7 +40,7 @@
 
 /**********************************************************************************************************************************************************/
 
-enum {IN_0, IN_1, OUT_0, OUT_1, PLAY_PAUSE, RECORD, RESET, UNDO, REDO, PLUGIN_PORT_COUNT};
+enum {IN_0, IN_1, OUT_0, OUT_1, PLAY_PAUSE, RECORD, RESET, UNDO, REDO, DRY_LEVEL, PLUGIN_PORT_COUNT};
 
 #define NUM_CHANNELS 2
 #define PLUGIN_AUDIO_PORT_COUNT     4
@@ -291,6 +291,7 @@ public:
     float *reset;
     float *undo;
     float *redo;
+    float *dryLevel;
     SooperLooper *pLS;
     int playing;
     int started;
@@ -685,7 +686,8 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
 
     LADSPA_Data * pfOutput;
     LADSPA_Data * pfOutput_1;
-    LADSPA_Data fDry=1.0, fWet=1.0, tmpWet;
+    LADSPA_Data fDry = *plugin->dryLevel;
+    LADSPA_Data fWet=1.0, tmpWet;
     LADSPA_Data fInputSample;
     LADSPA_Data fOutputSample;
 
@@ -1593,8 +1595,8 @@ passthrough:
         for (;lSampleIndex < SampleCount;
                 lSampleIndex++)
         {
-            plugin->temp_buffer[pass_index] = plugin->in_0[lSampleIndex];
-            plugin->temp_buffer[pass_index + 1] = plugin->in_1[lSampleIndex];
+            plugin->temp_buffer[pass_index] = fDry * plugin->in_0[lSampleIndex];
+            plugin->temp_buffer[pass_index + 1] = fDry * plugin->in_1[lSampleIndex];
             pass_index += 2;
         }
 
@@ -1647,18 +1649,6 @@ loopend:
 
     }
 
-    float test_buffer[1024];
-
-    long int l_index = 0;
-    for (unsigned s = 0; s < SampleCount; s++) {
-        //test_buffer[l_index] = plugin->in_0[s];
-        for (unsigned c = 0; c < NUM_CHANNELS; c++) {
-            float t_sample = (c == 0) ? plugin->in_0[s] : plugin->in_1[s];
-            test_buffer[l_index] = t_sample;
-            l_index++;
-        }
-    }
-
     //END_OF_LOOP
     long int s_index = 0;
     for (unsigned f = 0; f < SampleCount; f++) {
@@ -1667,10 +1657,6 @@ loopend:
         s_index+=NUM_CHANNELS;
     }
 
-    //for (unsigned f = 0; f < SampleCount; f ++) {
-    //    pfOutput[f] = plugin->in_0[f];
-    //    pfOutput_1[f] = plugin->in_1[f];
-    //}
 }
 
 /*****************************************************************************/
@@ -1813,6 +1799,8 @@ void SooperLooperPlugin::connect_port(LV2_Handle instance, uint32_t port, void *
     case REDO:
         plugin->redo = (float*) data;
         break;
+    case DRY_LEVEL:
+        plugin->dryLevel = (float*)data;
     }
 }
 
