@@ -298,7 +298,8 @@ public:
     int started;
     int recording;
     int params_state[PLUGIN_CONTROL_PORT_COUNT];
-
+    bool numLoopsDecremented;
+    int  numLoops;
     float temp_buffer[TEMP_BUFFER_SIZE]; //TODO check when this buffer needs to be cleared
 
     //lowpass variables
@@ -836,7 +837,6 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
         plugin->recording = 1;
         if (!plugin->started) {
             if (plugin->playing) {
-                printf("Starting!!\n");
                 plugin->pLS->state = STATE_TRIG_START;
                 plugin->started = 1;
             }
@@ -853,7 +853,7 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
         }
     } else if (*(plugin->record) <= 0.0 && plugin->recording) {
         plugin->recording = 0;
-        printf("stopping record\n");
+        plugin->numLoops++;
         if (plugin->started && plugin->playing)
             plugin->pLS->state = STATE_PLAY;
         else
@@ -861,13 +861,19 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
     }
 
     if (*(plugin->undo) > 0.0) {
+        if (!plugin->numLoopsDecremented && plugin->numLoops > 0) { //TODO this is a temporary fix, because there is problem with the undoLoop funtion
+            plugin->numLoops--;
+            plugin->numLoopsDecremented = true;
+        }
+        if (plugin->numLoops == 0) {
+            plugin->started = 0;
+        }
         if(loop) {
             int empty = undoLoop(pLS);
-            if (empty) {
-                plugin->started = 0;
-            }
             pLS->state = STATE_PLAY;
         }
+    } else if (plugin->numLoopsDecremented) {
+        plugin->numLoopsDecremented = false;
     }
 
     if (*(plugin->redo) > 0.0) {
@@ -894,7 +900,6 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
 
             case STATE_TRIG_START:
                 {
-                    printf("STATE_TRIG_START\n");
                     // we are looking for the threshold to actually
                     // start the recording on (while still playing dry signal)
 
@@ -1740,6 +1745,9 @@ LV2_Handle SooperLooperPlugin::instantiate(const LV2_Descriptor* descriptor, dou
     for (unsigned i = 0; i < TEMP_BUFFER_SIZE; i++) {
         plugin->temp_buffer[i] = 0.0;
     }
+
+    plugin->numLoopsDecremented = false;
+    plugin->numLoops = 0;
 
     return (LV2_Handle)plugin;
 }
