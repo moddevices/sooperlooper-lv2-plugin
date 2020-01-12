@@ -36,7 +36,7 @@
 #include <lv2.h>
 #include <string.h>
 
-#define PLUGIN_URI "http://moddevices.com/plugins/sooperlooper"
+#define PLUGIN_URI "http://moddevices.com/plugins/sooperlooper-2x2"
 
 /**********************************************************************************************************************************************************/
 
@@ -63,7 +63,7 @@ typedef float LADSPA_Data;
 /* The maximum sample memory  (in seconds). */
 
 #ifndef SAMPLE_MEMORY
-#define SAMPLE_MEMORY 400.0 //TODO this needs to be 2x if the same sample length needs to be preserved
+#define SAMPLE_MEMORY 800.0
 #endif
 
 #define XFADE_SAMPLES 512

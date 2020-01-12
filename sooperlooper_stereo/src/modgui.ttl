@@ -1,7 +1,7 @@
 @prefix lv2:    <http://lv2plug.in/ns/lv2core#>.
 @prefix modgui: <http://moddevices.com/ns/modgui#>.
 
-<http://moddevices.com/plugins/sooperlooper>
+<http://moddevices.com/plugins/sooperlooper-2x2>
   modgui:gui [
     modgui:resourcesDirectory <modgui>;
     modgui:iconTemplate <modgui/sooperlooper.html>;
