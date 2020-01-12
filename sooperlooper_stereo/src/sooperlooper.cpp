@@ -875,6 +875,8 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
     }
     /* end control reading */
 
+    long int pass_index = 0;
+
     while (lSampleIndex < SampleCount)
     {
         loop = pLS->headLoopChunk;
@@ -925,11 +927,8 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
 
                             }
 
-                            printf("BUFFER LOOP\n");
-
                             plugin->temp_buffer[interPolIndex++] = fDry * fInputSample;
 
-                            printf("AFTER LOOP\n");
                         }
                     }
 
@@ -937,7 +936,6 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
 
             case STATE_RECORD:
                 {
-                    printf("STATE_RECORD\n");
                     // play the input out while recording it.
 
                     for (;lSampleIndex < SampleCount;
@@ -955,7 +953,6 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
                                 pLS->state = STATE_PLAY;
                                 break;
                             }
-                            printf("lSampleIndex = %li\n", lSampleIndex);
                             //fInputSample = *plugin->inputs[c][lSampleIndex];
                             fInputSample = (c == 0) ? plugin->in_0[lSampleIndex] : plugin->in_1[lSampleIndex];
 
@@ -966,7 +963,6 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
 
 
                             plugin->temp_buffer[interPolIndex++] = fDry * fInputSample;
-                            printf("interPolIndex = %li\n", interPolIndex);
                         }
                     }
 
@@ -1597,9 +1593,9 @@ passthrough:
         for (;lSampleIndex < SampleCount;
                 lSampleIndex++)
         {
-            plugin->temp_buffer[interPolIndex++] = plugin->in_0[lSampleIndex];
-            plugin->temp_buffer[interPolIndex++] = plugin->in_1[lSampleIndex];
-
+            plugin->temp_buffer[pass_index] = plugin->in_0[lSampleIndex];
+            plugin->temp_buffer[pass_index + 1] = plugin->in_1[lSampleIndex];
+            pass_index += 2;
         }
 
 
@@ -1651,14 +1647,30 @@ loopend:
 
     }
 
-    //printf("inter_pol_index = %li\n", interPolIndex);
+    float test_buffer[1024];
 
-    long int s_index = 0;
-    for (unsigned f = 0; f < SampleCount; f += NUM_CHANNELS) {
-        pfOutput[s_index] = plugin->temp_buffer[f];
-        pfOutput_1[s_index] = plugin->temp_buffer[f + 1];
-        s_index++;
+    long int l_index = 0;
+    for (unsigned s = 0; s < SampleCount; s++) {
+        //test_buffer[l_index] = plugin->in_0[s];
+        for (unsigned c = 0; c < NUM_CHANNELS; c++) {
+            float t_sample = (c == 0) ? plugin->in_0[s] : plugin->in_1[s];
+            test_buffer[l_index] = t_sample;
+            l_index++;
+        }
     }
+
+    //END_OF_LOOP
+    long int s_index = 0;
+    for (unsigned f = 0; f < SampleCount; f++) {
+        pfOutput[f] = plugin->temp_buffer[s_index];
+        pfOutput_1[f] = plugin->temp_buffer[s_index + 1];
+        s_index+=NUM_CHANNELS;
+    }
+
+    //for (unsigned f = 0; f < SampleCount; f ++) {
+    //    pfOutput[f] = plugin->in_0[f];
+    //    pfOutput_1[f] = plugin->in_1[f];
+    //}
 }
 
 /*****************************************************************************/
