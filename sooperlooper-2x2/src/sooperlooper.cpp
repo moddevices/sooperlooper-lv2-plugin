@@ -299,6 +299,7 @@ public:
     int recording;
     int params_state[PLUGIN_CONTROL_PORT_COUNT];
     bool numLoopsDecremented;
+    bool undoSet;
     int  numLoops;
     float temp_buffer[TEMP_BUFFER_SIZE]; //TODO check when this buffer needs to be cleared
 
@@ -860,7 +861,8 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
             plugin->pLS->state = STATE_OFF;
     }
 
-    if (*(plugin->undo) > 0.0) {
+    if (*(plugin->undo) > 0.0 && !plugin->undoSet) {
+        undo_counter++;
         if (!plugin->numLoopsDecremented && plugin->numLoops > 0) { //TODO this is a temporary fix, because there is problem with the undoLoop funtion
             plugin->numLoops--;
             plugin->numLoopsDecremented = true;
@@ -872,8 +874,12 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
             int empty = undoLoop(pLS);
             pLS->state = STATE_PLAY;
         }
-    } else if (plugin->numLoopsDecremented) {
-        plugin->numLoopsDecremented = false;
+        plugin->undoSet = true;
+    } else if (*plugin->undo == 0.0 && plugin->undoSet) {
+        if (plugin->numLoopsDecremented)
+            plugin->numLoopsDecremented = false;
+        if (plugin->undoSet)
+            plugin->undoSet = false;
     }
 
     if (*(plugin->redo) > 0.0) {
@@ -913,30 +919,32 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
                                     || fTrigThresh==0.0)
                             {
 
-                                loop = pushNewLoopChunk(pLS, 0);
-                                if (loop) {
-                                    pLS->state = STATE_RECORD;
-                                    // force rate to be 1.0
-                                    fRate = pLS->fCurrRate = 1.0;
+                                if (c == 0) {
+                                    loop = pushNewLoopChunk(pLS, 0);
+                                    if (loop) {
+                                        pLS->state = STATE_RECORD;
+                                        // force rate to be 1.0
+                                        fRate = pLS->fCurrRate = 1.0;
 
-                                    loop->pLoopStop = loop->pLoopStart;
-                                    loop->lLoopLength = 0;
-                                    loop->lStartAdj = 0;
-                                    loop->lEndAdj = 0;
-                                    loop->dCurrPos = 0.0;
-                                    loop->firsttime = 0;
-                                    loop->lMarkL = loop->lMarkEndL = MAXLONG;
-                                    loop->frontfill = loop->backfill = 0;
-                                    loop->lCycles = 1; // at first just one
-                                    loop->srcloop = NULL;
-                                    pLS->nextState = -1;
-                                    loop->dOrigFeedback = fFeedback;
-                                    break;
-                                }
-                                else {
-                                    //DBG(fprintf(stderr, "out of memory! back to PLAY mode\n"));
-                                    pLS->state = STATE_PLAY;
-                                    break;
+                                        loop->pLoopStop = loop->pLoopStart;
+                                        loop->lLoopLength = 0;
+                                        loop->lStartAdj = 0;
+                                        loop->lEndAdj = 0;
+                                        loop->dCurrPos = 0.0;
+                                        loop->firsttime = 0;
+                                        loop->lMarkL = loop->lMarkEndL = MAXLONG;
+                                        loop->frontfill = loop->backfill = 0;
+                                        loop->lCycles = 1; // at first just one
+                                        loop->srcloop = NULL;
+                                        pLS->nextState = -1;
+                                        loop->dOrigFeedback = fFeedback;
+                                        break;
+                                    }
+                                    else {
+                                        //DBG(fprintf(stderr, "out of memory! back to PLAY mode\n"));
+                                        pLS->state = STATE_PLAY;
+                                        break;
+                                    }
                                 }
 
                             }
@@ -1749,6 +1757,7 @@ LV2_Handle SooperLooperPlugin::instantiate(const LV2_Descriptor* descriptor, dou
 
     plugin->numLoopsDecremented = false;
     plugin->numLoops = 0;
+    plugin->undoSet = false;
 
     return (LV2_Handle)plugin;
 }
