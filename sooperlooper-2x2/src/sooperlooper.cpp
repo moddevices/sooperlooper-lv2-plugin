@@ -298,9 +298,9 @@ public:
     int started;
     int recording;
     int params_state[PLUGIN_CONTROL_PORT_COUNT];
-    bool numLoopsDecremented;
     bool undoSet;
-    int  numLoops;
+    bool redoSet;
+    bool initNewLoop;
     float temp_buffer[TEMP_BUFFER_SIZE]; //TODO check when this buffer needs to be cleared
 
     //lowpass variables
@@ -806,6 +806,7 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
         plugin->recording = 0;
         plugin->playing = 0;
         plugin->started = 0;
+        plugin->initNewLoop = false;
     }
 
     if (*(plugin->play_pause) > 0.0 && !plugin->playing) {
@@ -813,7 +814,6 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
         if (!plugin->started) {
             if (plugin->recording) {
                 plugin->pLS->state = STATE_TRIG_START;
-                printf("Starting!!\n");
                 plugin->started = 1;
             }
         } else {
@@ -832,6 +832,7 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
     } else if (*(plugin->play_pause) <= 0.0 && plugin->playing) {
         plugin->pLS->state = STATE_OFF;
         plugin->playing = 0;
+        //plugin->initNewLoop = false; //TODO does it also needs to be here?
     }
 
     if (*(plugin->record) > 0.0 && !plugin->recording) {
@@ -854,7 +855,6 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
         }
     } else if (*(plugin->record) <= 0.0 && plugin->recording) {
         plugin->recording = 0;
-        plugin->numLoops++;
         if (plugin->started && plugin->playing)
             plugin->pLS->state = STATE_PLAY;
         else
@@ -862,31 +862,26 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
     }
 
     if (*(plugin->undo) > 0.0 && !plugin->undoSet) {
-        undo_counter++;
-        if (!plugin->numLoopsDecremented && plugin->numLoops > 0) { //TODO this is a temporary fix, because there is problem with the undoLoop funtion
-            plugin->numLoops--;
-            plugin->numLoopsDecremented = true;
-        }
-        if (plugin->numLoops == 0) {
-            plugin->started = 0;
-        }
         if(loop) {
             int empty = undoLoop(pLS);
+            if (empty) {
+                plugin->started = 0;
+                plugin->initNewLoop = false;
+            }
             pLS->state = STATE_PLAY;
         }
-        plugin->undoSet = true;
     } else if (*plugin->undo == 0.0 && plugin->undoSet) {
-        if (plugin->numLoopsDecremented)
-            plugin->numLoopsDecremented = false;
-        if (plugin->undoSet)
             plugin->undoSet = false;
     }
 
-    if (*(plugin->redo) > 0.0) {
+    if (*(plugin->redo) > 0.0 && !plugin->redoSet) {
         if(loop) {
             redoLoop(pLS);
             pLS->state = STATE_PLAY;
+            plugin->redoSet = true;
         }
+    } else if (*plugin->redo == 0.0 && plugin->redoSet) {
+        plugin->redoSet = false;
     }
     /* end control reading */
 
@@ -919,8 +914,9 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
                                     || fTrigThresh==0.0)
                             {
 
-                                if (c == 0) {
+                                if (!plugin->initNewLoop) {
                                     loop = pushNewLoopChunk(pLS, 0);
+                                    plugin->initNewLoop = true;
                                     if (loop) {
                                         pLS->state = STATE_RECORD;
                                         // force rate to be 1.0
@@ -1755,9 +1751,9 @@ LV2_Handle SooperLooperPlugin::instantiate(const LV2_Descriptor* descriptor, dou
         plugin->temp_buffer[i] = 0.0;
     }
 
-    plugin->numLoopsDecremented = false;
-    plugin->numLoops = 0;
     plugin->undoSet = false;
+    plugin->redoSet = false;
+    plugin->initNewLoop = false;
 
     return (LV2_Handle)plugin;
 }
