@@ -122,7 +122,7 @@ lv2:port [
   lv2:symbol "dryLevel";
   lv2:name "dryLevel";
   lv2:shortName "dryLevel";
-  lv2:default 0.0;
+  lv2:default 1.0;
   lv2:minimum 0.0;
   lv2:maximum 1.0;
 ].

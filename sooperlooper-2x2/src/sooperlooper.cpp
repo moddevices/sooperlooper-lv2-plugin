@@ -1444,7 +1444,8 @@ void SooperLooperPlugin::run(LV2_Handle instance, uint32_t SampleCount)
                                             * 1.0 / XFADE_SAMPLES;
                                     }
 
-                                    pLS->lRampSamples -= 1;
+                                    //pLS->lRampSamples -= 1;
+                                    pLS->lRampSamples = (c == 1) ? pLS->lRampSamples - 1 : pLS->lRampSamples;
                                 }
 
 
@@ -1829,6 +1830,7 @@ void SooperLooperPlugin::connect_port(LV2_Handle instance, uint32_t port, void *
         break;
     case DRY_LEVEL:
         plugin->dryLevel = (float*)data;
+        break;
     }
 }
 

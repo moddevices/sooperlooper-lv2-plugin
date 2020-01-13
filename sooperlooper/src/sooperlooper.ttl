@@ -100,5 +100,14 @@ lv2:port [
   lv2:minimum 0;
   lv2:maximum 1;
   lv2:portProperty lv2:integer, lv2:toggled, pprops:trigger;
-
+],
+[
+  a lv2:ControlPort, lv2:InputPort;
+  lv2:index 7;
+  lv2:symbol "dryLevel";
+  lv2:name "dryLevel";
+  lv2:shortName "dryLevel";
+  lv2:default 1.0;
+  lv2:minimum 0.0;
+  lv2:maximum 1.0;
 ].
