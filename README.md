@@ -9,7 +9,7 @@ I started porting the old LADSPA SooperLooper plugin, but it uses the LV2 Contro
 
 Currently it supports:
 
- * mono in/out
+ * mono and stereo in/out
  * record/overdub
  * play/pause
  * undo
@@ -17,6 +17,5 @@ Currently it supports:
 
 Next features planned include:
 
- * stereo in/out
  * tempo/bpm sync
  * pitch change
